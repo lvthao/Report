@@ -1,0 +1,56 @@
+KVM vs Xen-based solution (Xen/XCP/XenServer)
+	-KVM: 
+	-Xen:
+compare openstack and vmware : 
+	1. design :
+	With so many companies devoting resources to OpenStack it has no dependencies to a single company
+	VM:excellent documentation and an easy-to-use interface for deployment 
+	open:no slouch here
+	2. feature:
+  	+ Vmotion / openstack live migration : support share storage and not share storage 
+  	+ VMware DSR ( Distributed Resource Scheduler) / openstack scheduler
+  	+ VMware HA / openstack HA(heat) (HA at vm)
+  	+VMware FT / OP FT
+
+KVM:
+	KVM needs QEMU to provide full hypervisor functionality. By itself, KVM is more of a virtualization infrastructure provider
+	type-1 hypervisor: bare machine, run only on the hardware not need OS 
+	type-2 hypervisor : need OS to run - hosted 
+	QEMU by itself is a Type-2 hypervisor. It intercepts the instructions meant for Virtual CPU and uses the host operating system to get those instructions executed on the physical CPU. When QEMU uses KVM for hardware acceleration, the combination becomes a Type-1 hypervisor
+
+
+	KVM: at its essence KVM is just a kernel infrastructure. It's not a product. The developers forked qemu to hook into the KVM kernel infrastructure and take advantage of it. Eventually the fork was merged back into the qemu mainstream.
+
+	qemu: powers nearly all Linux virtualization technologies behind the scenes.
+
+	Qemu is a spectacular piece of software written largely by Fabrice Bellard, a programming genius who also wrote TCC (tiny c compiler), FFMpeg and many other less famous programs.
+
+	Using grep -E "(vmx|svm|0xc0f)" --color=always /proc/cpuinfo to check the cpu support hardware virtualization if your processor does not support hardware virtualization, and you will not be able to use KVM.-
+
+	The hypervisor software has to translate the instructions meant for the Virtual CPU and convert it into instructions for the physical CPU. This translation has a big performance overhead.
+
+	KVM is the Linux kernel module that enables this mapping of physical CPU to Virtual CPU. This mapping provides the hardware acceleration for Virtual Machine and boosts its performance. Moreover, QEMU uses this acceleration when Virt Type is chosen as KVM - instructions meant for the Virtual CPU can be directly executed the physical CPU slice. 
+	QEMU uses TCG or Tiny Code Generator to optimally translate and execute the Virtual CPU instructions on the physical CPU
+Struct of file config :
+	- change path sql connection
+	- [keystone_authtoken]
+	- config rabbit
+
+Config cinder on multi-node configuration : CONFIG ON COMPUTE 
+ 	volume_driver=nova.volume.driver.ISCSIDriver
+	enabled_apis=ec2,osapi_compute,metadata
+	volume_api_class=nova.volume.cinder.API
+	iscsi_helper=tgtadm
+
+
+Hello, 
+
+    Steps to migrate Vmware windows instance to openstack 
+
+    1. Download latest Virtio drivers from http://alt.fedoraproject.org/pub/alt/virtio-win/latest/images/
+
+    2. Power off the windows vm and add virtio-win-0.1-81.iso to the CDROM and power-on the machine
+
+    3. Install virtio drivers ( Redhat Virtio SCSI Controller and Redhat virtio ethernet adapter )
+
+    4. Copy the VMDk file and upload to glance. Then launch the instance.

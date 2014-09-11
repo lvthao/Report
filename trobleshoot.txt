@@ -1,0 +1,323 @@
+1. bien moi truong 
+  vi /etc/keystone/keystonerc
+  
+   export OS_USERNAME=admin
+   export OS_PASSWORD=openstack12345
+   export OS_TENANT_NAME=admin
+   export OS_AUTH_URL=http://controller:35357/v2.0
+	
+	source /etc/keystone/keystonerc
+2. Restart cac dich vu
+   - Keystone : 
+		+ service keystone restart
+		+ keystone-manage db_sync
+		+ keystone user-list
+		keystone tenant-create --name=development
+   - Images Services :
+		service glance-registry restart
+		service glance-api restart
+		glance-manage db_sync
+		glance image-list
+		location image:/var/lib/glance/images
+		glance index
+		# The following command will change minimum ram to 2000MB and minimum disk to 1GB
+		glance image-update <<uuid or name of image>> --min-ram 2000 --min-disk 1
+	-Nova:
+		nova-manage db sync
+		nova image-list
+		nova boot --flavor <flavor> --image <image> <name>
+		nova boot --image Centos6.4-x86_64 --flavor cd5830ec-2d2c-4a9e-808e-fd0f511ffe43	 --key_name test test1
+		nova boot --image Centos6.4-x86_64 --flavor 2
+		nova keypair-add --pub-key mykey.pub mykey
+		nova-api listen on 8774 port 
+		//check status
+			nova-manage service list
+			nova-manage host list
+			nova-manage fixed list
+			nova network-list
+			nova service-list
+			nova list 
+		//install them sysfsutils package -31/3
+		//restart service
+			service nova-network restart
+			service nova-api restart
+			service nova-cert restart
+			service nova-consoleauth restart
+			service nova-scheduler restart
+			service nova-conductor restart	
+			service nova-novncproxy restart
+			service apache2 restart 
+			for ii in /etc/init.d/nova-*; do restart $(basename $ii); done
+			ps aux | grep nova-
+			ps aux | grep glance-
+ 			ps aux | grep keystone
+ 			ps aux | grep cinder
+			ps aux | grep swift
+			 swift stat
+		nova host-list
+		nova host-describe
+		nova diagnostics
+		nova usage-list
+		nova-manage service describe_resource compute01
+		#Cho phep dat password cho Instance khi khoi tao
+			libvirt_inject_password = True
+			enable_instance_password = True
+
+	-Networking:
+		nova network-create vmnet --fixed-range-v4=192.168.1.0/24 --bridge=br100 --multi-host=T
+		nova net-delete <network_id>
+		nova-manage floating create --ip_range=172.22.22.192/27 --pool PublicIP
+		nova-manage floating delete --ip_range=172.22.22.192/29
+		nova network-create --fixed_range_v4=10.10.1.0/24  --bridge br100 --project-id=27ef0ece7c794aacb2a8142baa16660a
+		xoa network-disassociate
+			nova network-disassociate --project-only 0 network_id
+			nova net-delete <network_id>
+		nova floating-ip-pool-list
+		nova floating-ip-create pub
+		nova add-floating-ip uuid ippublic
+		nova add-floating-ip <server> <address>
+		nova remove-floating-ip 873428d3-1b96-47db-8351-60cf357a7d75 172.22.22.194
+		nova floating-ip-list
+		nova-manage network list
+		brctl show
+		keystone tenant-list
+		assign ip for one tenant:nova-manage network create \--fixed_range_v4=10.10.1.0/24 \ --label cookbook --bridge br100 \ --project 950534b6b9d740ad887cce62011de77a
+		service neutron-plugin-openvswitch-agent restart
+		service neutron-l3-agent restart
+		service neutron-dhcp-agent restart
+		service neutron-metadata-agent restart 
+		neutron agent-list
+		for ii in /etc/init.d/neutron-*; do restart $(basename $ii); done
+
+		neutron net-create ext-net --shared --router:external=True
+			neutron subnet-create ext-net --name ext-subnet --allocation-pool start=172.22.22.193,end=172.22.22.224 --disable-dhcp --gateway 172.22.22.1 172.22.22.0/24
+
+		neutron net-create demo-net
+		  	neutron subnet-create demo-net --name demo-subnet --gateway 192.168.1.1 192.168.1.0/24 --dns-nameserver 8.8.8.8
+		  	neutron subnet-create int_net --name int_subnet --dns-nameserver 8.8.8.8 172.16.10.0/24
+		neutron router-create demo-router
+			neutron router-interface-add demo-router demo-subnet
+		neutron router-gateway-set demo-router ext-net
+
+		neutron port-list
+		neutron port-list -c id -c fixed_ips -c device_owner
+		neutron port-show
+		ovs-ofctl show br-int
+		ip netns show
+ 		ip netns exec qrouter-a51fe74a-49a9-4662-8ccf-cc7e8b7a0e33 route -n
+		ip netns exec qrouter-a51fe74a-49a9-4662-8ccf-cc7e8b7a0e33 iptables -L -t nat | grep 169
+
+	-Cinder:
+		service cinder-scheduler restart
+		service cinder-api restart
+		cinder create 
+		nova volume-attach instance_id volume_id
+		cinder list 
+		for ii in /etc/init.d/cinder-*; do restart $(basename $ii); done
+		nova volume-attach bbfcaf23-679d-4bce-82b8-33daeb2e8a94 l1eGoH-HylP-YBGK-n59w-m1Tu-zzF3-iRe90B /dev/vdc
+		Run :apt-get purge iscsitarget on block 
+		add new disk to create new sdb
+		pvscan
+	GRANT ALL ON *.* to root@192.168.6.16 IDENTIFIED BY 'openstack12345'; 	
+3. loi 
+	-The request you have made requires authentication. (HTTP 401)
+		-> fix : chay file source /etc.keystone/keystonerc 
+	-The server has either erred or is incapable of performing the requested operation. (HTTP 500) (Request-ID:
+		-> check status of nova :nova-manage service list ->fix: cho phep user nova 
+	- cannot attching the block storage 
+		Them dong icsis_ip_helper trong /etc/cinder/cinder.conf chi ve ip cua block 
+		->https://ask.openstack.org/en/question/130/why-do-i-get-no-portal-found-error-while-attaching-cinder-volume-to-vm/
+	-No portal found 
+		-> turn off iscsitarget , only run tgt service 
+	-<attribute 'message' of 'exceptions.BaseException' objects> (HTTP Unable to establish connection to http://localhost:35357/v2.0/tenants)
+		-> xoa khoang trang truoc admin_token trong file /etc/keystone/keystone.conf
+	-launch instance failure 
+		-> Check nova show test-instance
+	-libvirtError: internal error: no supported architecture for os type 'hvm' -> fix bat tinh nang ao hoa cua may
+	- ko ping dc tu vm ra ngoai :
+		-> fix : echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf  turn on routing on compute 
+ 				test : sysctl -p -> net.ipv4.ip_forward = 1 ok 
+				iptables -A POSTROUTING -t nat --src 192.168.1.0/24 -j MASQUERADE  // bat NAT
+				iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE 
+				iptables -t nat -nvL
+				iptables -t nat -I POSTROUTING 1 -s 1 192.168.1.0/24 -o eth0 -j MASQUERADE
+				iptables -t nat -L POSTROUTING 1 -s 1 192.168.1.0/24 -o eth0 -j MASQUERADE
+				iptables -I INPUT -p gre -j ACCEPT
+		tcpdump -i any -n -v \ 'icmp[icmptype] = icmp-echoreply or icmp[icmptype] = icmp-echo'
+		ip netns exec qrouter-a51fe74a-49a9-4662-8ccf-cc7e8b7a0e33 tcpdump -i any -n -v \ 'icmp[icmptype] = icmp-echoreply or icmp[icmptype] = icmp-echo'
+		iptables -L -t nat | grep 169
+		cat /etc/neutron/neutron.conf | grep -v ^$ | grep -v ^# 
+	- cannot create volume : 
+		-> grep volumeid /var/log/cinder/*.log 
+		->grep 903b85d0-bacc-4855-a261-10843fc2d65b /var/log/cinder/*.log
+	- cannot create instance: 
+		->nova show test-instance
+	-cannot edit the project on dashboard
+		-> check the role member on dashboard: keystone role-list
+	-grep -inr "a5a2cda3-f368-45b7-9738-b1542cec1520" /var/log/nova/nova-*.log > /var/log/nova/testlog
+	- turn on service 
+		-> chkconfig --level 345 nova-compute  on
+		-> ln -s /usr/lib/insserv/insserv /sbin/insserv
+	- update date time :-> fix loi XXX o network service
+		->dpkg-reconfigure tzdata
+		ntpq -p
+	- mysqladmin -uroot ?p$openstack status
+	- delete vm with error state 
+		nova reset-state
+		volume id =9ad7f2fc-9de8-4817-804a-4bf860975c1a
+		use cinder;
+		SELECT * FROM cinder.volumes where id ='8682c0bb-4c15-4927-8173-d1f11590f7d5'
+		update volumes set status = 'available', attach_status = 'detached' where id = '8682c0bb-4c15-4927-8173-d1f11590f7d5';
+		volume-5cf5a3f5-ba3b-4e1d-b38e-4d7455d4809a
+		lvremove cinder-volumes/volume-9ad7f2fc-9de8-4817-804a-4bf860975c1a
+		UPDATE instances SET  vm_state='deleted',task_state=NULL,deleted=1,deleted_at=now()  WHERE uuid='2cdf71a8-ecdd-46ec-b1cd-cf94f603fff8'
+		nova reset-state 4365e90f-b7cf-4253-9ded-1844df1c786b
+		**
+		use nova ;
+		select * from instances where uuid='2cdf71a8-ecdd-46ec-b1cd-cf94f603fff8';
+		UPDATE instances SET  vm_state='active',task_state=NULL,deleted=0,deleted_at=NULL  WHERE uuid='bbfcaf23-679d-4bce-82b8-33daeb2e8a94 ';
+	- change eth when create image from snapshot
+		delete MAC from /etc/udev/rules.d/70-persistent-net.rules	
+	-saving iptable :
+		sudo apt-get install iptables-persistent
+		sudo /etc/init.d/iptables-persistent save 
+    	sudo /etc/init.d/iptables-persistent reload
+    -checking kvm :
+    	ps -ef | grep qemu
+    -delete duplicate service 
+    	+duplicate cinder services:
+    		use cinder;
+    		DELETE FROM services WHERE host='OpenstackBlockStorage';
+    	+duplicate Neutron Services:
+    		USE neutron;
+    		DELETE FROM agents WHERE host='compute1';
+    	+duplicate 
+	-nova.api.openstack NoSuchOptError: no such option: neutron_url
+		-> missing line : network_api_class = nova.network.neutronv2.api.API in /etc/nova/nova.conf on controller
+
+	-'NovaException: Unexpected vif_type=binding_failed\n']
+		-> add new line into /etc/neutron/neutron.conf  on compute node
+			agent_down_time = 75
+			report_interval = 5
+	-message": "Virtual Interface creation failed", "code": 500,
+		-> check nova_admin_tenant_id = (keystone tenant-list | awk '/ service / { print $2 }' in /etc/neutron/neutron.conf on controller
+		-> insert:  vif_plugging_is_fatal = False    on /etc/nova/nova.conf on controller 
+					vif_plugging_timeout = 0
+
+	-message": schedule_run_instance raise exception.NoValidHost(reason="")
+	->	add some line on /etc/neutron/neutron.conf on all compute node 
+		notify_nova_on_port_status_changes = True
+ 		notify_nova_on_port_data_changes = True
+ 		nova_url = http://controller:8774/v2
+ 		nova_admin_username = nova
+ 		nova_admin_tenant_id = e81ec1a272b443a4b0290fac622adede
+		nova_admin_password = openstack12345
+		nova_admin_auth_url = http://controller:35357/v2.0
+
+
+4. Check Networking :
+	cat /var/lib/nova/networks/nova-br100.conf 
+	grep 192.168.1.2 /var/log/syslog
+	sudo cat /var/lib/nova/instances/instance-00000009/console.log 
+	ip addr show eth0
+	# xoa private network 
+		nova net-list
+		go network ra khoi project 
+		-> nova-manage project scrub <project id >
+		nova net-delete <network id>
+	# the pool from which floating IPs are taken by default
+		default_floating_pool="Public"
+		floating_range = 172.22.22.192/29
+		auto_assign_floating_ip=true
+	#add two ethernet card : 
+		add tren controller
+		nova network-create vmnet2 --fixed-range-v4=192.168.2.0/24 --project-id=5e45397eb5e24e2faaf6a3bf5d53731f
+	neutron
+	ifconfig eth0 mtu 1454 up
+
+
+	 apt-get install openvswitch-datapath-lts-saucy-dkms
+5. Check instance
+nova get-vnc-console a7aaa7c0-a19e-455e-83cd-87e819d564e2 novnc
+nova flavor-list
+ nova image-list
+ nova net-list
+ nova secgroup-list
+
+ nova flavor-create --ephemeral 0 --swap 0 --is-public true m1.test1 8 1024 10 1
+
+ nova boot --debug  --flavor m1.test --image Centos6.4-x86_64 --nic net-id=3b2efe4e-85ae-4097-904e-8fcee876d73d \
+ --nic net-id=bd2004d3-6af7-45dc-b275-45c4af2591d1 --security-group Allport  Centos6
+nova boot  --flavor m1.test --image Centos6.4-x86_64 --nic net-id=8c3b6420-06ac-4104-81bb-6bf0deab9792 \
+ --security-group AllPort  Centos6
+ nova boot --flavor m1.test --block-device source=image,id=f7ef452a-36c4-41d7-bf2f-efe7811fd4f4,dest=volume,size=10,shutdown=PRESERVE,bootindex=0 \ mybootvolume
+
+ cinder create --display-name my-new-volume 10
+nova volume-attach 9be47d27-7292-4303-af49-6fb8b489dfdb 8d047a27-0990-4452-bddd-766628153075 /dev/vdc
+
+nova get-vnc-console INSTANCE_NAME xvpvnc
+resize the server :
+	nova resize myCirrosServer flavor(4) --poll
+6. Edit security group 
+	nova secgroup-list
+	nova add-secgroup <server> <securitygroup>
+	nova secgroup-create telnet "allow telnet traffic from the internet"
+	nova secgroup-add-rule telnet 23 0.0.0.0/0
+	nova secgroup-add-rule all 1 4096 0.0.0.0/0
+	nova secgroup-add-rule global_http tcp 80 80 0.0.0.0/0
+
+	$ neutron security-group-rule-create --protocol icmp \
+      --direction ingress --remote-ip-prefix 0.0.0.0/0 default
+
+    $ neutron security-group-rule-create --protocol tcp \
+      --port-range-min 22 --port-range-max 22 \
+      --direction ingress --remote-ip-prefix 0.0.0.0/0 default
+7. mount block storage 
+	fdisk -l /dev/vdb
+	mkfs.ext4 /dev/vdb
+	mkdir /mnt1
+	mount /dev/vdb /mnt1
+	df -h
+8. Create Volume 
+	nova image-list
+	cinder create 10 --display-name my-new-volume --image-id ada61d4a-8cbf-4652-8a5b-07a434b34538 
+	resize volume :cinder extend f16deaa6-3c4e-49e1-847c-6e33c67e099a 10 (detach volume first )
+9. test disk c?a instance 
+	cat /proc/cpuinfo 
+	hdparm -tT /dev/vda
+	dd if=/dev/zero of=/tmp/output.img bs=8k count=256k
+	dd if=/dev/zero of=/tmp/output.img bs=4k count=256k
+10.  horizone:
+  	*Change path /horizone
+  	more /etc/apache2/conf-available/openstack-dashboard.conf
+	modify "WSGIScriptAlias /horizon /usr/share/openstack-dashboard/openstack_dashboard/wsgi/django.wsgi" and change /horizon into /
+	
+	vi /etc/openstack-dashboard/local_settings.py 
+	change LOGIN_REDIRECT_URL='/horizon' to LOGIN_REDIRECT_URL='/'
+	change LOGIN_URL='/horizon//auth/login/'  to LOGIN_URL='/auth/login/' 
+	change LOGOUT_URL='/horizon/auth/logout/'  to LOGOUT_URL='/auth/logout/' 
+
+	*Change keystone default
+	/etc/openstack-dashboard/local_settings.py
+	change From:
+		OPENSTACK_KEYSTONE_DEFAULT_ROLE = "Member"
+		To
+		OPENSTACK_KEYSTONE_DEFAULT_ROLE = "_member_"
+ 
+11. Port service:
+	port 35375:authentication keystone 
+	port 8774:compute
+	port 8775: metadata service 
+	port 8777:compute
+	port 8776:cinder
+	port 5000:keystone
+	port 9292:glance
+	port 9696:neutron 
+	port 8080:swift
+
+13. config sshkey to excute command from remote host 
+	http://www.dotkam.com/2009/03/10/run-commands-remotely-via-ssh-with-no-password/ 
+14.script service status openstack 
+	alias openstack-status='bash /root/script/openstack-status.sh'
+15 logrotate :
+https://www.digitalocean.com/community/tutorials/how-to-manage-log-files-with-logrotate-on-ubuntu-12-10

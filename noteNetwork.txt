@@ -1,0 +1,15 @@
+NETWORKING ON OPENSTACK: 
+There are two kind of network : nova-network service and neutron 
+	Mutil host networking is when we run nova-service on the all of compute node and the instance on that compute will use the compute node as a gateway to  the internet. It need one public ip as a compute node to communication to the internet 
+	Single host networking is when we run nova-service only the controller node and instance will use the controller as a gateway to the internet. The disadvantage is create a single point failure. if the controller is not available, the instance cannot communication to the internet. 
+
+Neutron : two type of network :Tennant network and provider network 
+
+Tenant creates his own network(s), router(s), allowing complex network topologies for multi-tier applications
+
+
+flat or VLAN, shared or tenant, or provider or overlay
+
+Network namespaces is a very cool Linux feature can be used for many purposes and is heavily used in OpenStack networking. Network namespaces are isolated containers which can hold a network configuration and is not seen from outside of the namespace. A network namespace can be used to encapsulate specific network functionality or provide a network service in isolation as well as simply help to organize a complicated network setup
+
+Linux bridge is used to connect the port from OVS to the VM. Every port goes from the OVS bridge to a Linux bridge and from there to the VM. The reason for using regular Linux bridges is for security groups’ enforcement. Security groups are implemented using iptables and iptables can only be applied to Linux bridges and not to OVS bridges. 

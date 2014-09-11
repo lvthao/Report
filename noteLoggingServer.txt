@@ -1,0 +1,60 @@
+Install centralization Logging server using rsyslog
+
+1. install rsyslog on all server : apt-get install rsyslog rsyslog-doc
+2. Turn the flag to using the rsyslog all in the service (EX: /etc/service/service.conf): 
+	Insert some line in service.conf :
+		sed -i "s/#verbose=false/verbose = False/" /etc/keystone/keystone.conf 
+		sed -i "s/#debug=false/debug = False/" /etc/keystone/keystone.conf 
+		sed -i "s/#use_syslog=false/use_syslog = True/" /etc/keystone/keystone.conf
+		sed -i "s/#syslog_log_facility=LOG_USER/syslog_log_facility = LOG_LOCAL0/" /etc/keystone/keystone.conf
+3. On the Controller edit file /etc/rsyslog.conf	
+ 	change the line $PrivDropToGroup syslog to -> $PrivDropToGroup adm : 
+ 	change chmod the /var/log/rsyslog to user can write into this folder 
+4. Create the file /etc/rsyslog.d/server.conf on controller:
+	# Enable UDP
+	$ModLoad imudp
+	# Listen on 10.0.0.180 only
+	$UDPServerAddress 10.0.0.180
+	# Port 514
+	$UDPServerRun 514
+	# Create logging templates for nova
+	$template NovaFile,"/var/log/rsyslog/%HOSTNAME%/nova.log"
+	$template NovaAll,"/var/log/rsyslog/nova.log"
+	# create template for Glance 
+	$template GlanceFile,"var/log/rsyslog/%HOSTNAME%/glance.log"
+	$template KeystoneFile,"var/log/rsyslog/%HOSTNAME%/keystone.log"
+	$template CinderFile,"var/log/rsyslog/%HOSTNAME%/cinder.log"
+
+	$template NeutronFile,"var/log/rsyslog/%HOSTNAME%/neutron.log"
+	# Log everything else to syslog.log
+	$template DynFile,"/var/log/rsyslog/%HOSTNAME%/syslog.log"
+	*.* ?DynFile
+	# Log various openstack components to their own individual file
+	local0.* ?NovaFile
+	local0.* ?NovaAll
+	local1.* ?GlanceFile
+	local2.* ?KeystoneFile
+	local3.* ?CinderFile
+	local4.* ?NeutronFile
+	local5.* ?SwiftFile
+	& ~
+5. On Compute node : 
+   open /etc/rsyslog.conf, add new line *.* @controller:514
+6. config logrotate to break the large size log 
+	create  vi /etc/logrotate.d/openstack 
+					/var/log/rsyslog
+				{
+				        rotate 7
+				        daily
+				        size 10k
+				        missingok
+				        notifempty
+				        create 700 root root
+				        delaycompress
+				        compress
+				}
+	Reference : http://www.thegeekstuff.com/2010/07/logrotate-examples/
+
+
+
+

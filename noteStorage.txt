@@ -1,0 +1,40 @@
+Config cinder on multi-node configuration : CONFIG ON COMPUTE 
+ 	volume_driver=nova.volume.driver.ISCSIDriver
+	enabled_apis=ec2,osapi_compute,metadata
+	volume_api_class=nova.volume.cinder.API
+	iscsi_helper=tgtadm
+
+Choosing the Storage back end :
+we have two case of storage on openstack : emphemeral and persistent 
+Ephemeral storage is used on on the compute node where the instance is running. When you startup a instance on a compute node the (glance) image is downloaded to this location and the image is run from there. Anything that happens within the virtual will be saved here on the compute node. If you are creating a lot of large instances with actual data in them you might need a lot of local storage (by default the images are sparse files so it only takes as much data as is actually used in the instance). Important to know is that the data on this disk is gone when the virtual is terminated. Also, if you want to be able to (live) migrate machines between nodes you need some kind of shared storage for the ephemeral storage between all compute nodes like nfs or glusterfs. (or you could boot from Cinder volumes)
+
+There also is persistent storage through Cinder. These are block-devices that are connected to your instance across the network. You can boot from cinder volumes so that you don't need ephemeral storage. 
+
+When we choosing the backend, we must to answer some questions:
+	+ Do we need the block storage ?
+	+ Do we need the Object Storage ?
+	+ Do we support the live mirigate?
+	+ Do we support file level storage?
+	+ Do we redundant the storage?
+						Object 				Block 				File-level		live mirigation          redundant
+			Swift		x 																					x
+			LVM								x
+			Ceph		x 					x  					x											x
+			GlusterFX    x 					x  					x					x 						x	
+			NFS                             x                   x 					x	
+
+
+Block Storage:
+cinder workflow
+	-A volume is created through the cinder create command. This command creates an LV into the volume group (VG) “cinder-volumes
+	-The volume is attached to an instance through the nova volume-attach command. This command creates a unique iSCSI IQN that is exposed to the compute node.
+	-The compute node, which runs the instance, now has an active iSCSI session and new local storage (usually a /dev/sdX disk).
+	-Libvirt uses that local storage as storage for the instance. The instance get a new disk, usually a /dev/vdX disk.
+Block storage is implement on OpenStack by Openstack blockstorage Cinder and support multi backend using driver.  
+
+
+
+Object Storage :
+	-OpenStack Object Storage communicates internally with unencrypted, unauthenticated rsync for performance—you
+	do want the private network to be private.
+	-Object Storage can save vm instance inside of the object storage system, a alternative solution to storing image using file system 
