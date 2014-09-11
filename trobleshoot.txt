@@ -119,6 +119,7 @@
 		add new disk to create new sdb
 		pvscan
 	GRANT ALL ON *.* to root@192.168.6.16 IDENTIFIED BY 'openstack12345'; 	
+	
 3. loi 
 	-The request you have made requires authentication. (HTTP 401)
 		-> fix : chay file source /etc.keystone/keystonerc 
