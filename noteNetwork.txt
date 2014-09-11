@@ -1,15 +1,44 @@
 NETWORKING ON OPENSTACK: 
-There are two kind of network : nova-network service and neutron 
-	Mutil host networking is when we run nova-service on the all of compute node and the instance on that compute will use the compute node as a gateway to  the internet. It need one public ip as a compute node to communication to the internet 
-	Single host networking is when we run nova-service only the controller node and instance will use the controller as a gateway to the internet. The disadvantage is create a single point failure. if the controller is not available, the instance cannot communication to the internet. 
+1. Introduction
+	The purpose of network is give ip to instance. From the older version, nova-network is used to allocate the ip by three mode : FLAT mode , FLAT DHCP mode, VLAN. In the havana version, neutron is using to replace service nova-network. In neutron, we can give a service such as : firewall as a service, load balancing as a service, vps as a service. 
+	There are two kind of network : nova-network service and neutron 
+		Mutil host networking is when we run nova-service on the all of compute node and the instance on that compute will use the compute node as a gateway to  the internet. It need one public ip as a compute node to communication to the internet 
+		Single host networking is when we run nova-service only the controller node and instance will use the controller as a gateway to the internet. The disadvantage is create a single point failure. if the controller is not available, the instance cannot communication to the internet. 
 
-Neutron : two type of network :Tennant network and provider network 
+		Neutron : two type of network :Tennant network and provider network 
 
-Tenant creates his own network(s), router(s), allowing complex network topologies for multi-tier applications
+		Tenant creates his own network(s), router(s), allowing complex network topologies for multi-tier applications
 
 
-flat or VLAN, shared or tenant, or provider or overlay
+		flat or VLAN, shared or tenant, or provider or overlay
 
-Network namespaces is a very cool Linux feature can be used for many purposes and is heavily used in OpenStack networking. Network namespaces are isolated containers which can hold a network configuration and is not seen from outside of the namespace. A network namespace can be used to encapsulate specific network functionality or provide a network service in isolation as well as simply help to organize a complicated network setup
+		Network namespaces is a very cool Linux feature can be used for many purposes and is heavily used in OpenStack networking. Network namespaces are isolated containers which can hold a network configuration and is not seen from outside of the namespace. A network namespace can be used to encapsulate specific network functionality or provide a network service in isolation as well as simply help to organize a complicated network setup
 
-Linux bridge is used to connect the port from OVS to the VM. Every port goes from the OVS bridge to a Linux bridge and from there to the VM. The reason for using regular Linux bridges is for security groups’ enforcement. Security groups are implemented using iptables and iptables can only be applied to Linux bridges and not to OVS bridges. 
+		Linux bridge is used to connect the port from OVS to the VM. Every port goes from the OVS bridge to a Linux bridge and from there to the VM. The reason for using regular Linux bridges is for security groups’ enforcement. Security groups are implemented using iptables and iptables can only be applied to Linux bridges and not to OVS bridges. 
+2. The architecture of neutron: 
+	The traffic flow from instance: VM(eth0)-->(Tap) device attach linux bridge qbr....(iptables)-->Integration bridge (br-int) --> bridge tun --> bridge tun--> bri-int -->router--> br-ex
+	(A-eth0)-->(B-Tap...)linux bridge:qbr(C-qvb...)-->(D-qvo...)br-int(E-path-tun)--> (F-path-tun)br-tun() --> br-tun(I-path-tun)-->(J-path-tun)br-int(O-tap) -->(Q-tape) DHCP
+										(M-qr) -->(N-qr-...)router(K-qg-...)--> br-ex	
+	iptables -S | grep tap
+	neutron-openvswi-sg-chain is security group implement
+	The tunnel bridge translates VLAN-tagged traffic from the integration bridge into GRE tunnels
+	The translation between VLAN IDs and tunnel IDs is performed by OpenFlow rules installed on br-tun
+	The integration bridge on the network controller serves to connect instances to network services, such as routers and DHCP servers.
+	reference: https://openstack.redhat.com/Networking_in_too_much_detail
+3. Some command to troubleshoot
+	
+	ip netns
+	ip netns exec qrouter-51c3080d-0314-4463-98da-942702fa5259  iptables -t nat -S
+	ip netns exec qrouter-51c3080d-0314-4463-98da-942702fa5259  ip a
+	ip netns exec qrouter-7a44de32-3ac0-4f3e-92cc-1a37d8211db8 iptables-save | grep 9697
+	ip netns exec qrouter-7a44de32-3ac0-4f3e-92cc-1a37d8211db8 netstat -anpt
+	ps -f --pid 11937 | fold -s -w 82
+	ip netns exec qrouter-a51fe74a-49a9-4662-8ccf-cc7e8b7a0e33 tcpdump -i any -n -v \ 'icmp[icmptype] = icmp-echoreply or icmp[icmptype] = icmp-echo'
+	tcpdump -i any -n -v \ 'icmp[icmptype] = icmp-echoreply or icmp[icmptype] = icmp-echo'
+	iptables -L -t nat | grep 169
+	cat /etc/neutron/neutron.conf | grep -v ^$ | grep -v ^# 
+
+	ovs-vsctl show
+	ovs-ofctl dump-flows br-tun
+
+	
