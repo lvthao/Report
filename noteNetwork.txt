@@ -36,6 +36,7 @@ NETWORKING ON OPENSTACK:
 	ip netns exec qrouter-a51fe74a-49a9-4662-8ccf-cc7e8b7a0e33 tcpdump -i any -n -v \ 'icmp[icmptype] = icmp-echoreply or icmp[icmptype] = icmp-echo'
 	tcpdump -i any -n -v \ 'icmp[icmptype] = icmp-echoreply or icmp[icmptype] = icmp-echo'
 	iptables -L -t nat | grep 169
+	udhcpc -T 1 -A 1 
 	cat /etc/neutron/neutron.conf | grep -v ^$ | grep -v ^# 
 
 	ovs-vsctl show
