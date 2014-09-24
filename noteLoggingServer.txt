@@ -56,5 +56,68 @@ Install centralization Logging server using rsyslog
 	Reference : http://www.thegeekstuff.com/2010/07/logrotate-examples/
 	/etc/cron.daily/logrotate
 
+==================================================================================================
+Install centralization Logging server using logstash , elaticsearch, kibana
+1. Install service on logserver:
+	https://www.digitalocean.com/community/tutorials/how-to-use-logstash-and-kibana-to-centralize-and-visualize-logs-on-ubuntu-14-04
+2. Config shipper log on all node : 
+	local0.* 	@@logserver:9000  #nova
+	local1.* 	@@logserver:9000  #glance
+	local2.* 	@@logserver:9000  #keystone
+	local3.* 	@@logserver:9000  #cinder
+	local4.* 	@@logserver:9000  #neutron
+	local5.* 	@@logserver:9000  #swiff
+	local6.* 	@@logserver:9000  #ceilometer
+3. Config pattern on logserver:
+	create file on /usr/share/logstash/patterns
+		OPENSTACK_PROG (?:[ a-zA-Z0-9_\-]+\.)+[ A-Za-z0-9_\-$]+ 
+		OPENSTACK_PROG_SINGLE [A-Za-z0-9_\-$]+ 
+		OPENSTACK_SOURCE %{OPENSTACK_PROG}|%{OPENSTACK_PROG_SINGLE} 
+		OPENSTACK_REQ_LIST (\[(?:(req-%{UUID}|%{UUID}|%{BASE16NUM}|None|-|%{SPACE}))+\])? 
+		OPENSTACK_PID ( %{POSINT:pid:int})? 
+		OPENSTACK_LOGLEVEL ([D|d]ebug|DEBUG|[N|n]otice|NOTICE|[I|i]nfo|INFO|[W|w]arn?(?:ing)?|WARN?(?:ING)?|[E|
+		e]rr?(?:or)?|ERR?(?:OR)?|[C|c]rit?(?:ical)?|CRIT?(?:ICAL)?|[F|f]atal|FATAL|[S|s]evere|SEVERE|[A|a]udit|AUDIT) 
+		OPENSTACK_NORMAL %{TIMESTAMP_ISO8601:timestamp}%{OPENSTACK_PID} %
+		{OPENSTACK_LOGLEVEL:loglevel} %{OPENSTACK_SOURCE:program} {OPENSTACK_REQ_LIST:request_id_list} %{GREEDYDATA:msg} 
+		RAW_TRACE (?:^[^0-9].*$|^$) 
+		OPENSTACK_TRACE %{TIMESTAMP_ISO8601:timestamp} %{POSINT:pid:int} ([T|t]race|TRACE) %
+		{OPENSTACK_SOURCE:program} %{GREEDYDATA:msg}|%{RAW_TRACE:msg} 
+		OPENSTACK_MESSAGE %{OPENSTACK_NORMAL}|%{OPENSTACK_TRACE} 
+		OPENSTACK_SYSLOGLINE %{SYSLOG5424PRINUM}%{CISCOTIMESTAMP:syslog_ts} %
+		{HOSTNAME:syslog5424_host} %{OPENSTACK_MESSAGE:os_message}  
+4.Config logstash :
+	input {
+	  tcp {
+	    port => 9000
+	    type => syslog
+	  }
 
+	  udp {
+	    port => 9000
+	    type => syslog
+	  }
+	}
+	filter {
+	  if [type] == "syslog" {
+	  	patterns_dir=> "/usr/share/logstash/patterns" 
+	    grok {
+				match => { "message" => "%{OPENSTACK_SYSLOGLINE}" } 
+				add_field=> { "received_at" => "%{@timestamp}" } 
+				add_field=> { "_message" => "%{syslog5424_host} %{message}" } 
+	    }
+	    syslog_pri { 
+			severity_labels=> ["EMERGENCY", "ALERT", "CRITICAL", "ERROR", "WARNING", "NOTICE", "INFO", 
+			"DEBUG"] 
+			syslog_pri_field_name=> "syslog5424_pri" 
 
+	    }
+	    date {
+	      match => [ "syslog_timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+	    }
+	  }
+
+	}
+	output {
+	  elasticsearch { host => localhost }
+	  stdout { codec => rubydebug }
+	}
