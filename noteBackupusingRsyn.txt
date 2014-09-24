@@ -1,0 +1,42 @@
+we using one center server to backup all the config file on all node.
+1. install rsyn
+	apt-get install rsync
+2. create place to contain file back on the server
+	create backup controller:
+		mkdir /usr/share/backup/controller/nova
+		mkdir /usr/share/backup/controller/neutron
+		mkdir /usr/share/backup/controller/glance
+		mkdir /usr/share/backup/controller/keystone
+	create backup compute01:
+		mkdir /usr/share/backup/compute01/nova
+		mkdir /usr/share/backup/compute01/neutron
+	create backup compute02:
+		mkdir /usr/share/backup/compute02/nova
+		mkdir /usr/share/backup/compute02/neutron
+	create backup compute03:
+		mkdir /usr/share/backup/compute03/nova
+		mkdir /usr/share/backup/compute03/neutron
+	create backup network:
+		mkdir /usr/share/backup/network/neutron
+
+3. copy private key using to ssh without key:
+	-scp ~/.ssh/id_rsa.pub root@172.22.22.181:~/.ssh/
+	-on 172.22.22.181:
+		cat ~/.ssh/id_rsa.pub >>~/.ssh/authorized_keys
+4. run backup from controller:
+echo "---------------------------- backup controller node----------------------------"
+	rsync -uptorgvlHaz  /etc/nova/ /usr/share/backup/controller/nova
+	rsync -uptorgvlHaz  /etc/glance/ /usr/share/backup/controller/glance
+	rsync -uptorgvlHaz  /etc/keystone/ /usr/share/backup/controller/keystone
+	rsync -uptorgvlHaz  /etc/neutron/ /usr/share/backup/controller/neutron
+echo "---------------------------- backup compute01 node----------------------------"
+ 	rsync -uptorgvlHaz  -e ssh root@172.22.22.181:/etc/nova/ /usr/share/backup/compute01/nova
+ 	rsync -uptorgvlHaz  -e ssh root@172.22.22.181:/etc/neutron/ /usr/share/backup/compute01/neutron 
+echo "---------------------------- backup compute02 node----------------------------"
+ 	rsync -uptorgvlHaz -e ssh root@172.22.22.182:/etc/nova/ /usr/share/backup/compute02/nova 
+ 	rsync -uptorgvlHaz -e ssh root@172.22.22.182:/etc/neutron/ /usr/share/backup/compute02/neutron 
+echo "---------------------------- backup compute03 node----------------------------"
+ 	rsync -uptorgvlHaz -e ssh root@172.22.22.183:/etc/nova/ /usr/share/backup/compute03/nova 
+ 	rsync -uptorgvlHaz -e ssh root@172.22.22.183:/etc/netron/ /usr/share/backup/compute03/neutron
+echo "---------------------------- backup network  node----------------------------"
+ 	rsync -uptorgvlHaz -e ssh root@172.22.22.184:/etc/netron/ /usr/share/backup/NetworkNode/neutron
