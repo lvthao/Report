@@ -1,30 +1,44 @@
 NETWORKING ON OPENSTACK: 
 1. Introduction
 	The purpose of network is give ip to instance. From the older version, nova-network is used to allocate the ip by three mode : FLAT mode , FLAT DHCP mode, VLAN. In the havana version, neutron is using to replace service nova-network. In neutron, we can give a service such as : firewall as a service, load balancing as a service, vps as a service. 
-	There are two kind of network : nova-network service and neutron 
-		Mutil host networking is when we run nova-service on the all of compute node and the instance on that compute will use the compute node as a gateway to  the internet. It need one public ip as a compute node to communication to the internet 
-		Single host networking is when we run nova-service only the controller node and instance will use the controller as a gateway to the internet. The disadvantage is create a single point failure. if the controller is not available, the instance cannot communication to the internet. 
+	Networking is a standalone compoment on openstack modular architecture. The networking user daemon neutron-server to expose the Networking API and enable admin to config networking plugin. 
+	There are two service of network : nova-network service and neutron 
+		Mutil host networking (Neutron)is when we run nova-service on the all of compute node and the instance on that compute will use the compute node as a gateway to  the internet. It need one public ip as a compute node to communication to the internet 
+		Single host networking (nova-network)is when we run nova-service only the controller node and instance will use the controller as a gateway to the internet. The disadvantage is create a single point failure. if the controller is not available, the instance cannot communication to the internet. 
+	Compare nova-network and neutron:
+	Neutron : two type of network :Tennant network and provider network 
+		Tennant network:Tenant creates his own network(s), router(s), allowing complex network topologies for multi-tier applications. The tenant network create fully isolated between all project. Networking support some type of tenant network 
+			Flat :
+			LOCAL:
+			Vlan:
+			VXLAN and GRE:
+		Provider network: It use for mapping the tennant network to the existing physical network. 
 
-		Neutron : two type of network :Tennant network and provider network 
-
-		Tenant creates his own network(s), router(s), allowing complex network topologies for multi-tier applications
-
-
-		flat or VLAN, shared or tenant, or provider or overlay
-
-		Network namespaces is a very cool Linux feature can be used for many purposes and is heavily used in OpenStack networking. Network namespaces are isolated containers which can hold a network configuration and is not seen from outside of the namespace. A network namespace can be used to encapsulate specific network functionality or provide a network service in isolation as well as simply help to organize a complicated network setup
-
-		Linux bridge is used to connect the port from OVS to the VM. Every port goes from the OVS bridge to a Linux bridge and from there to the VM. The reason for using regular Linux bridges is for security groups’ enforcement. Security groups are implemented using iptables and iptables can only be applied to Linux bridges and not to OVS bridges. 
+		
+	
 2. The architecture of neutron: 
 	The traffic flow from instance: VM(eth0)-->(Tap) device attach linux bridge qbr....(iptables)-->Integration bridge (br-int) --> bridge tun --> bridge tun--> bri-int -->router--> br-ex
 	(A-eth0)-->(B-Tap...)linux bridge:qbr(C-qvb...)-->(D-qvo...)br-int(E-path-tun)--> (F-path-tun)br-tun() --> br-tun(I-path-tun)-->(J-path-tun)br-int(O-tap) -->(Q-tape) DHCP
 										(M-qr) -->(N-qr-...)router(K-qg-...)--> br-ex	
+	
+
 	iptables -S | grep tap
 	neutron-openvswi-sg-chain is security group implement
 	The tunnel bridge translates VLAN-tagged traffic from the integration bridge into GRE tunnels
 	The translation between VLAN IDs and tunnel IDs is performed by OpenFlow rules installed on br-tun
 	The integration bridge on the network controller serves to connect instances to network services, such as routers and DHCP servers.
 	reference: https://openstack.redhat.com/Networking_in_too_much_detail
+
+	Some definition to understand neutron networking:
+		Network namespaces is a very cool Linux feature can be used for many purposes and is heavily used in OpenStack networking. Network namespaces are isolated containers which can hold a network configuration and is not seen from outside of the namespace. A network namespace can be used to encapsulate specific network functionality or provide a network service in isolation as well as simply help to organize a complicated network setup. Namspace support : DHCP agent, L3 agent
+			DHCP Agent: Using dnsmaq to provide ip address to instance  
+			L3 agent : Using to routing traffice between instance together. The L3 agent use iptables to implement floating IP to do NAT.The neutron-l3-agent is designed to use network namespaces to provide multiple independent virtual routers per node, that do not interfere with each other or with routing of the compute node on which they are hosted 
+		Open vSwitch: OVS is used to connect virtual machines to the physical port. OVS contains bridges and ports, the OVS bridges are different from the Linux bridge
+
+		Linux bridge is used to connect the port from OVS to the VM. Every port goes from the OVS bridge to a Linux bridge and from there to the VM. The reason for using regular Linux bridges is for security groups’ enforcement. Security groups are implemented using iptables and iptables can only be applied to Linux bridges and not to OVS bridges. 
+		Veth pairs are used extensively throughout the network setup in OpenStack and are also a good tool to debug a network problem. Veth pairs are simply a virtual wire and so veths always come in pairs. Typically one side of the veth pair will connect to a bridge and the other side to another bridge or simply left as a usable interface.
+		overlapping subnet: Networking subnet can be overlap with one of the physical network that host uses. For example: the data network or managment network is 10.0.0.0/24 ,the user can create their network and it can be overlap with this 10.0.0.0/24. The admin cannot control the user create the network.A big advantage of namespaces implementation in neutron is that tenants can create overlapping IP addresses, a situation that gives freedom to cloud users because they are free to create any subnet of choice without fear of conflicting with that of another tenant. Linux network namespace is required on nodes running neutron-l3-agent or neutron-dhcp-agent if overlapping IPs is in use. Hence the hosts running these processes must support network namespaces.  The network namspace can solve that problem. A network namespace isolated network environment with this own networking. It has own network interface, routing table, and the iptables
+
 3. Some command to troubleshoot
 	
 	ip netns
