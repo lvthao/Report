@@ -24,6 +24,9 @@
 		glance image-update <<uuid or name of image>> --min-ram 2000 --min-disk 1
 	-Nova:
 		nova-manage db sync
+
+
+
 		nova image-list
 		nova boot --flavor <flavor> --image <image> <name>
 		nova boot --image Centos6.4-x86_64 --flavor cd5830ec-2d2c-4a9e-808e-fd0f511ffe43	 --key_name test test1
@@ -214,8 +217,14 @@
  		nova_admin_tenant_id = e81ec1a272b443a4b0290fac622adede
 		nova_admin_password = openstack12345
 		nova_admin_auth_url = http://controller:35357/v2.0
-
-
+	-ovs-vsctl cannot create gre between compute node and networknode 
+		-> check remove the blank into ovs section in /etc/neutron/plugin/ml2/ml2_config.ini90878999999999999999999999988u8u8989888888888888yp
+	-rsyslogd-2039: Could not open output pipe '/dev/xconsole' 
+		->Comment it out near the end of /etc/rsyslog.d/50-default.conf :
+		# daemon.*;mail.*;\
+		# news.err;\
+		# *.=debug;*.=info;\
+		# *.=notice;*.=warn |/dev/xconsole
 4. Check Networking :
 	cat /var/lib/nova/networks/nova-br100.conf 
 	grep 192.168.1.2 /var/log/syslog
@@ -318,7 +327,18 @@ resize the server :
 
 13. config sshkey to excute command from remote host 
 	http://www.dotkam.com/2009/03/10/run-commands-remotely-via-ssh-with-no-password/ 
+	scp id_rsa.pub remoteuser@remotehost.com:~/.ssh/
 14.script service status openstack 
 	alias openstack-status='bash /root/script/openstack-status.sh'
-15 logrotate :
-https://www.digitalocean.com/community/tutorials/how-to-manage-log-files-with-logrotate-on-ubuntu-12-10
+15. logrotate :
+	https://www.digitalocean.com/community/tutorials/how-to-manage-log-files-with-logrotate-on-ubuntu-12-10
+	echo *.err,warn  @@logserver:9000 > /etc/rsyslog.d/logstash.conf
+
+16. Mirigate openstack to VMware:
+	glance image-create --name myimage --disk-format=raw --container-format=bare < /path/to/file.img
+	- Create snapshot instance :
+		nova image-create --poll myInstance myInstanceSnapshot
+	- download snapshot and convert to .vmdk
+		glance image-download 4f1e0bd6-12d5-4533-b8f7-52c930d543f2 > TestConvertOP-VM.qcow2
+		qemu-img convert -f qcow2 -O vmdk centos.qcow2 centos.vmdk
+
