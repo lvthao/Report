@@ -7,6 +7,8 @@ Install centralization Logging server using rsyslog
 		sed -i "s/#debug=false/debug = False/" /etc/keystone/keystone.conf 
 		sed -i "s/#use_syslog=false/use_syslog = True/" /etc/keystone/keystone.conf
 		sed -i "s/#syslog_log_facility=LOG_USER/syslog_log_facility = LOG_LOCAL0/" /etc/keystone/keystone.conf
+
+
 3. On the Controller edit file /etc/rsyslog.conf	
  	change the line $PrivDropToGroup syslog to -> $PrivDropToGroup adm : 
  	change chmod the /var/log/rsyslog to user can write into this folder 
@@ -37,6 +39,7 @@ Install centralization Logging server using rsyslog
 	local3.* ?CinderFile
 	local4.* ?NeutronFile
 	local5.* ?SwiftFile
+	local6.*
 	& ~
 5. On Compute node : 
    open /etc/rsyslog.conf, add new line *.* @controller:514
@@ -55,7 +58,12 @@ Install centralization Logging server using rsyslog
 				}
 	Reference : http://www.thegeekstuff.com/2010/07/logrotate-examples/
 	/etc/cron.daily/logrotate
-
+		
+Flag	Status	Flag	Log
+Scenario	verbose=true	debug=true	DEBUG, ERROR, WARNING, INFO
+Scenario	verbose=false	debug=true	DEBUG, ERROR, WARNING, INFO
+Scenario	verbose=true	debug=false	WARNING, INFO
+Scenario	verbose=false	debug=false	WARNING, ERROR
 ==================================================================================================
 Install centralization Logging server using logstash , elaticsearch, kibana
 1. Install service on logserver:
@@ -85,34 +93,35 @@ Install centralization Logging server using logstash , elaticsearch, kibana
 		OPENSTACK_MESSAGE %{OPENSTACK_NORMAL}|%{OPENSTACK_TRACE} 
 		OPENSTACK_SYSLOGLINE %{SYSLOG5424PRINUM}%{CISCOTIMESTAMP:syslog_ts} %
 		{HOSTNAME:syslog5424_host} %{OPENSTACK_MESSAGE:os_message}  
+
+
+		OPENSTACK_LOGLEVEL ([A-a]lert|ALERT|[T|t]race|TRACE|[D|d]ebug|DEBUG|[N|n]otice|NOTICE|[I|i]nfo|INFO|[W|w]arn?(?:ing)?|WARN?(?:ING)?|[E|e]rr?(?:or)?|ERR?(?:OR)?|[C|c]rit?(?:ical)?|CRIT?(?:ICAL)?|[A|a]udit|AUDIT|[F|f]atal|FATAL|[S|s]evere|SEVERE|EMERG(?:ENCY)?|[Ee]merg(?:ency)?)
+OPENSTACK_LOG %{TIMESTAMP_ISO8601:OS_timestamp} %{POSINT:OS_pid} %{OPENSTACK_LOGLEVEL:OS_loglevel} %{PROG:OS_program} (?<OS_id>\[(?:(req-%{UUID}|%{UUID}|%{BASE16NUM}|None|-|%{SPACE}))+\])? %{GREEDYDATA:OS_message}
+OPENSTACK_LOGSTORAGE %{GREEDYDATA:OS_message}
+OPENSTACK_LOGLINE %{OPENSTACK_LOG}|%{OPENSTACK_LOGSTORAGE}
+OPENSTACK_SYSLOG (?<sys_pri>\<%{POSINT}\>)%{TIMESTAMP_ISO8601:timestamp} %{IPORHOST:OS_hostname} %{OPENSTACK_LOGLINE}
+
 4.Config logstash :
 	input {
 	  tcp {
 	    port => 9000
 	    type => syslog
 	  }
-
-	  udp {
-	    port => 9000
-	    type => syslog
-	  }
 	}
 	filter {
 	  if [type] == "syslog" {
-	  	patterns_dir=> "/usr/share/logstash/patterns" 
+	  	
 	    grok {
-				match => { "message" => "%{OPENSTACK_SYSLOGLINE}" } 
-				add_field=> { "received_at" => "%{@timestamp}" } 
+	    		patterns_dir=> "/usr/share/logstash/patterns" 
+				match => { "message" => "%{OPENSTACKLOGLINE}" } 
+				add_field=> { "received_at" => "%{@OS_timestamp}" } 
 				add_field=> { "_message" => "%{syslog5424_host} %{message}" } 
 	    }
 	    syslog_pri { 
-			severity_labels=> ["EMERGENCY", "ALERT", "CRITICAL", "ERROR", "WARNING", "NOTICE", "INFO", 
-			"DEBUG"] 
-			syslog_pri_field_name=> "syslog5424_pri" 
-
 	    }
 	    date {
-	      match => [ "syslog_timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+	    	type => "syslog"
+	      	match => [ "syslog_timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
 	    }
 	  }
 
@@ -121,3 +130,63 @@ Install centralization Logging server using logstash , elaticsearch, kibana
 	  elasticsearch { host => localhost }
 	  stdout { codec => rubydebug }
 	}
+5. Customization the openstack pattern:
+	Example: <134>2014-09-30T16:09:18.580221+07:00 controller 2014-09-30 16:09:18.579 1261 INFO oslo.messaging._drivers.impl_rabbit [-] Connected to AMQP server on controller:5672
+	It will be parse as a structure :
+		TimestampRsyslog : 2014-09-30T16:09:18.580221+07:00
+		Hostname :controller
+		Timestamp: 2014-09-30 16:09:18.579
+		PID: 1261
+		LOGLEVEL: WARNING
+		PROGRAM: oslo.messaging._drivers.impl_rabbit
+		ID: [-]
+		MESSAGE: Connected to AMQP server on controller:5672
+	So, we divide the log line into a lot of grok pattern
+	OPENSTACKLOGLINE %{SYSLOG_PRI:sys_pri}%{OPENSTACKTIMESTAMP:timestamp} %{IPORHOST:hostname} %{OPENSTACKTIMESTAMP:OS_timestamp} %{OPENSTACKPID:OS_pid} %{OPENSTACKLOGLEVEL:OS_loglevel} %{OPENSTACKPROGRAM:OS_program} %{OPENSTACKREQTID:OS_id} %{OPENSTACKMESSAGE:OS_msg}
+
+
+	We write regular expression to every grok pattern: 
+		LOGLEVEL 					([Aa]lert|ALERT|[Tt]race|TRACE|[Dd]ebug|DEBUG|[Nn]otice|NOTICE|[Ii]nfo|INFO|[Ww]arn?(?:ing)?|WARN?(?:ING)?|[Ee]rr?(?:or)?|ERR?(?:OR)?|[Cc]rit?(?:ical)?|CRIT?(?:ICAL)?|[Ff]atal|FATAL|[Ss]evere|SEVERE|EMERG(?:ENCY)?|[Ee]merg(?:ency)?)
+		POSINT 						\b(?:[1-9][0-9]*)\b
+		PROG 						(?:[\w._/%-]+)
+		SYSLOGPROG					 %{PROG:program}
+		UUID 						[A-Fa-f0-9]{8}-(?:[A-Fa-f0-9]{4}-){3}[A-Fa-f0-9]{12}
+		TIMESTAMP_ISO8601 			%{YEAR}-%{MONTHNUM}-%{MONTHDAY}[T ]%{HOUR}:?%{MINUTE}(?::?%{SECOND})									?%{ISO8601_TIMEZONE}?
+		REQID 						(\[(req-%{UUID}|%{BASE16NUM}|-|%{SPACE})*\])?
+		SYSLOG_PRI                          (\<%{POSINT}\>)
+		OPENSTACKTIMESTAMP 			%{TIMESTAMP_ISO8601}
+		OPENSTACKPID 				(%{POSINT:OS_pid})?
+		OPENSTACKLOGLEVEL 			%{LOGLEVEL}
+		OPENSTACKPROGRAM			%{SYSLOGPROG}
+		OPENSTACKREQTID 			%{REQID}
+		OPENSTACKMESSAGE 			%{GREEDYDATA}
+
+translate { 
+field => "syslog_facility" 
+dictionary => [ 
+"local0", "nova", 
+"local1", "glance", 
+"local2", "keystone", 
+"local3", "cinder", 
+"local4", "neutron", 
+"local5", "swiff", 
+"local6", "ceilometer" 
+] 
+fallback => "unknown" 
+destination => "component" 
+} 
+/usr/lib/jvm/java-1.7.0/bin/
+export PATH=$PATH:/usr/lib/jvm/java-1.7.0/bin/
+/opt/logstash/bin/logstash -f test.config < input
+mutate {
+  type => 'json_logger'
+  replace => ["@message", "%{msg}"]
+  remove => "msg"
+}
+
+
+(?<sys_pri>\<%{POSINT}\>)%{TIMESTAMP_ISO8601:timestamp} %{IPORHOST:hostname} %{TIMESTAMP_ISO8601:OS_timestamp} %{POSINT:OS_pid} %{OPENSTACK_LOGLEVEL:OS_loglevel} %{SYSLOGPROG:OS_program} (?<OS_id>\[(req-%{UUID}|%{BASE16NUM}|-|%{SPACE})*\])? %{GREEDYDATA:OS_message}
+
+
+(?<sys_pri>\<%{POSINT}\>)%{TIMESTAMP_ISO8601:timestamp} %{IPORHOST:OS_hostname} %{TIMESTAMP_ISO8601:OS_timestamp} %{POSINT:OS_pid} %{LOGLEVEL:OS_loglevel} %{SYSLOGPROG:OS_program} (?<OS_id>\[(req-%{UUID}|%{BASE16NUM}|-|%{SPACE})*\]) %{GREEDYDATA:OS_message}|(?<sys_pri1>\<%{POSINT}\>)%{TIMESTAMP_ISO8601:timestamp1} %{IPORHOST:OS_hostname1} %{GREEDYDATA:_message}
+GRANT ALL PRIVILEGES on zabbix.* to 'zabbix'@'localhost' IDENTIFIED BY 'openstack12345';
