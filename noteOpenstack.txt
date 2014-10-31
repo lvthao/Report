@@ -42,15 +42,21 @@ Config cinder on multi-node configuration : CONFIG ON COMPUTE
 	volume_api_class=nova.volume.cinder.API
 	iscsi_helper=tgtadm
 
+Consequently
 
-Hello, 
+aiming to aid : nhằm hổ trợ
+ That being said, it is clear that since all the tools enable infrastructure cloud computing, there is always some overlap in the features that they provide. This overlap tends to be larger for those tools that are closer on the “Cloud Model” axis.
+Eucalyptus, CloudStack-Citrix , OpenStack and OpenNebula 
+“it depends on what you’re looking for
 
-    Steps to migrate Vmware windows instance to openstack 
+Different Cloud Models
+Enterprise Cloud Model (Datacenter Virtualization): opennebula focous on that 
+(Infrastructure Provision): openstack focus
 
-    1. Download latest Virtio drivers from http://alt.fedoraproject.org/pub/alt/virtio-win/latest/images/
 
-    2. Power off the windows vm and add virtio-win-0.1-81.iso to the CDROM and power-on the machine
+Different Product Views
+OpenNebula is a single enterprise-ready open-source product, easy to install and operate, with a single installing and updating process, a one-stop community and a long-term commercial support. Any organization can use the open-source distribution to build a production cloud, and receive best-effort support through the community mailing list. Additionally, any organization can purchase commercial support directly from the developers. The important aspect is that we do not deliver enterprise editions of the software, we commercially support the community software.
 
-    3. Install virtio drivers ( Redhat Virtio SCSI Controller and Redhat virtio ethernet adapter )
-
-    4. Copy the VMDk file and upload to glance. Then launch the instance.
+On the other hand, OpenStack comprises many subprojects with different levels maturity that require complex integration to achieve a functional cloud infrastructure. A growing number of components and subprojects is making even more difficult their integration and coordination, and the delivery of a single coherent solution. No update path is provided if you want to install a new version, and there is not commercial support. Any organization interested in using OpenStack, and requiring commercial support and enterprise maturity, is recommended (by the vendors running the project) to deploy any of the several enterprise distributions.
+Eucalyptus focus compatible AWS
+Why I choose the openstack.
