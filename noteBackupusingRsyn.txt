@@ -40,3 +40,5 @@ echo "---------------------------- backup compute03 node------------------------
  	rsync -uptorgvlHaz -e ssh root@172.22.22.183:/etc/netron/ /usr/share/backup/compute03/neutron
 echo "---------------------------- backup network  node----------------------------"
  	rsync -uptorgvlHaz -e ssh root@172.22.22.184:/etc/netron/ /usr/share/backup/NetworkNode/neutron
+
+ 	mysqldump -u root -popenstack12345 --all-databases >/usr/share/backup/openstack-database-$(date +"%m_%d_%Y").sql
