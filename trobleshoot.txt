@@ -218,13 +218,22 @@
 		nova_admin_password = openstack12345
 		nova_admin_auth_url = http://controller:35357/v2.0
 	-ovs-vsctl cannot create gre between compute node and networknode 
-		-> check remove the blank into ovs section in /etc/neutron/plugin/ml2/ml2_config.ini90878999999999999999999999988u8u8989888888888888yp
+		-> check remove the blank into ovs section in /etc/neutron/plugin/ml2/ml2_config.
+
 	-rsyslogd-2039: Could not open output pipe '/dev/xconsole' 
 		->Comment it out near the end of /etc/rsyslog.d/50-default.conf :
 		# daemon.*;mail.*;\
 		# news.err;\
 		# *.=debug;*.=info;\
 		# *.=notice;*.=warn |/dev/xconsole
+	- umount -o remount,rw /
+		controller 111 , uuid 119
+		compute 110 , uid 117
+	-Change uid and gid of user
+		usermod -u 110 nova
+		find / -uid 106 -exec chown nova {} \;
+	 	groupmod -g 117 nova
+	 	find / -gid 107 -exec chgrp nova {} \;
 4. Check Networking :
 	cat /var/lib/nova/networks/nova-br100.conf 
 	grep 192.168.1.2 /var/log/syslog
@@ -248,26 +257,24 @@
 
 	 apt-get install openvswitch-datapath-lts-saucy-dkms
 5. Check instance
-nova get-vnc-console a7aaa7c0-a19e-455e-83cd-87e819d564e2 novnc
-nova flavor-list
- nova image-list
- nova net-list
- nova secgroup-list
+	nova get-vnc-console a7aaa7c0-a19e-455e-83cd-87e819d564e2 novnc
+	nova flavor-list
+	 nova image-list
+	 nova net-list
+	 nova secgroup-list
 
- nova flavor-create --ephemeral 0 --swap 0 --is-public true m1.test1 8 1024 10 1
+	 nova flavor-create --ephemeral 0 --swap 0 --is-public true m1.test1 8 1024 10 1
 
- nova boot --debug  --flavor m1.test --image Centos6.4-x86_64 --nic net-id=3b2efe4e-85ae-4097-904e-8fcee876d73d \
- --nic net-id=bd2004d3-6af7-45dc-b275-45c4af2591d1 --security-group Allport  Centos6
-nova boot  --flavor m1.test --image Centos6.4-x86_64 --nic net-id=8c3b6420-06ac-4104-81bb-6bf0deab9792 \
- --security-group AllPort  Centos6
- nova boot --flavor m1.test --block-device source=image,id=f7ef452a-36c4-41d7-bf2f-efe7811fd4f4,dest=volume,size=10,shutdown=PRESERVE,bootindex=0 \ mybootvolume
+	 nova boot --debug  --flavor m1.test --image Centos6.4-x86_64 --nic net-id=3b2efe4e-85ae-4097-904e-8fcee876d73d \
+	 --nic net-id=bd2004d3-6af7-45dc-b275-45c4af2591d1 --security-group Allport  Centos6
+	nova boot  --flavor m1.minimal --image cirros-0.3.2-x86_64 --nic net-id=9518411e-fc3c-4412-93d4-2ff33539ddcd  --security-group AllPort  test1
+	nova boot  --flavor m1.test --image cirros-0.3.2-x86_64 --nic net-id=9518411e-fc3c-4412-93d4-2ff33539ddcd \--security-group AllPort  test1
+	 nova boot --flavor m1.test --block-device source=image,id=f7ef452a-36c4-41d7-bf2f-efe7811fd4f4,dest=volume,size=10,shutdown=PRESERVE,bootindex=0 \ mybootvolume
 
- cinder create --display-name my-new-volume 10
-nova volume-attach 9be47d27-7292-4303-af49-6fb8b489dfdb 8d047a27-0990-4452-bddd-766628153075 /dev/vdc
+	 cinder create --display-name my-new-volume 10
+	nova volume-attach 9be47d27-7292-4303-af49-6fb8b489dfdb 8d047a27-0990-4452-bddd-766628153075 /dev/vdc
 
-nova get-vnc-console INSTANCE_NAME xvpvnc
-resize the server :
-	nova resize myCirrosServer flavor(4) --poll
+	nova get-vnc-console INSTANCE_NAME xvpvnc
 6. Edit security group 
 	nova secgroup-list
 	nova add-secgroup <server> <securitygroup>
@@ -313,7 +320,8 @@ resize the server :
 		OPENSTACK_KEYSTONE_DEFAULT_ROLE = "Member"
 		To
 		OPENSTACK_KEYSTONE_DEFAULT_ROLE = "_member_"
- 
+ 	* Change logo and logo_splash in : /usr/share/openstack-dashboard/openstack_dashboard/static/dashboard/img
+ 	* change css :/usr/share/openstack-dashboard/openstack_dashboard/static/dashboard/css/
 11. Port service:
 	port 35375:authentication keystone 
 	port 8774:compute
@@ -341,4 +349,35 @@ resize the server :
 	- download snapshot and convert to .vmdk
 		glance image-download 4f1e0bd6-12d5-4533-b8f7-52c930d543f2 > TestConvertOP-VM.qcow2
 		qemu-img convert -f qcow2 -O vmdk centos.qcow2 centos.vmdk
+16. Migrate instance: 
+	-https://www.mirantis.com/blog/tutorial-openstack-live-migration-with-kvm-hypervisor-and-nfs-shared-storage/
+		sed -i "s/#listen_tls.*/listen_tls=0/g" /etc/libvirt/libvirtd.conf
 
+		sed -i "s/#tcp_port.*/tcp_port =\"16509\"/g" /etc/libvirt/libvirtd.conf
+
+		sed -i "s/#tls_port.*/tls_port =\"16514\"/g" /etc/libvirt/libvirtd.conf
+
+		sed -i "s/#listen_tcp.*/listen_tcp=1/g" /etc/libvirt/libvirtd.conf
+
+		echo "auth_tcp=\"none\" " >> /etc/libvirt/libvirtd.conf
+	
+	-commnand :
+	 nova list
+	 nova show instance
+	 nova host-describe compute01
+	 nova --debug live-migration cecb64dc-38f3-4947-9f0a-279c2157f512 compute01
+	
+
+20.Task 
+	- Install all service on Controller
+	- Install all service on COMPUTE
+	- Install Network node with neutron
+	- Config block storage 
+	- Config object storage 
+	- Install log server with rsyslog , logstash
+	- Config live migration
+	- config share storage
+	- Convert vm from OP, hypervisor to vmware 
+	- Convert vm from vmware to OP
+
+/dev/sdb1       /usr/share/glance ext4    defaults 0 1
