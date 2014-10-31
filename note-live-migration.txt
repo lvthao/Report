@@ -1,0 +1,32 @@
+Using NFS to share storage.
+1. Install on controller:
+	-apt-get install nfs-kernel-server -y 
+	-insert /etc/exports
+		/usr/share/glance/instances 172.22.22.181/24(rw,fsid=0,insecure,no_subtree_check,async,no_root_squash)
+		/usr/share/glance/instances 172.22.22.182/24(rw,fsid=0,insecure,no_subtree_check,async,no_root_squash)
+	- service nfs-kernel-server restart
+	- /etc/init.d/idmapd restart
+2. Install on compute:
+	-apt-get install nfs-common -y 
+	- edit /etc/fstab
+		controller:/ /var/lib/nova/instances nfs auto 0 0
+	- mount –a -v
+	- check mount successful ?
+		df -k
+	-/etc/libvirt/libvirtd.conf
+	 	before : #listen_tls = 0
+		after : listen_tls = 0
+
+		before : #listen_tcp = 1
+		after : listen_tcp = 1
+
+		add: auth_tcp = "none"
+	-/etc/init/libvirt-bin.conf.
+		before : exec /usr/sbin/libvirtd -d
+		after : exec /usr/sbin/libvirtd -d -l
+	-/etc/default/libvirt-bin.
+		before :libvirtd_opts=" -d"
+		after :libvirtd_opts=" -d -l"
+
+	$ stop libvirt-bin && start libvirt-bin
+	$ ps -ef | grep libvirt
