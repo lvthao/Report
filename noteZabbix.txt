@@ -1,0 +1,5 @@
+install zabbix agent : apt-get install zabbix-agent
+
+In a passive check the agent responds to a data request. Zabbix server (or proxy) asks for data, for example, CPU load, and Zabbix agent sends back the result.
+
+Active checks require more complex processing. The agent must first retrieve a list of items from Zabbix server for independent processing. Then it will periodically send new values to the server.
