@@ -41,9 +41,9 @@ Config cinder on multi-node configuration : CONFIG ON COMPUTE
 	enabled_apis=ec2,osapi_compute,metadata
 	volume_api_class=nova.volume.cinder.API
 	iscsi_helper=tgtadm
-
+================================================
 Consequently
-
+OpenStack is a cloud operating system that controls large pools of compute, storage, and networking resources throughout a data center
 aiming to aid : nhằm hổ trợ
  That being said, it is clear that since all the tools enable infrastructure cloud computing, there is always some overlap in the features that they provide. This overlap tends to be larger for those tools that are closer on the “Cloud Model” axis.
 Eucalyptus, CloudStack-Citrix , OpenStack and OpenNebula 
@@ -60,3 +60,24 @@ OpenNebula is a single enterprise-ready open-source product, easy to install and
 On the other hand, OpenStack comprises many subprojects with different levels maturity that require complex integration to achieve a functional cloud infrastructure. A growing number of components and subprojects is making even more difficult their integration and coordination, and the delivery of a single coherent solution. No update path is provided if you want to install a new version, and there is not commercial support. Any organization interested in using OpenStack, and requiring commercial support and enterprise maturity, is recommended (by the vendors running the project) to deploy any of the several enterprise distributions.
 Eucalyptus focus compatible AWS
 Why I choose the openstack.
+The main reason cited for choosing OpenStack is Open Technology and Avoiding Lock-in.
+
+
+===========================================================
+Cloud computing is a computing model, refers to the on-demand delivery of IT resources and applications via the Internet with pay-as-you-go pricing.The cloud mode has 5 essential characteristics , 3 service models and  4 deployment models
+ 
+Essential Characteristics:
+On-demand self-service: A user can individually provision computing capabilities, such as server time and network storage and this process need automatically without requiring human interaction.
+Broad network access : The availability access over the network and through standard mechanisms such as workstations, mobile phones, tablets and laptops. 
+Resource pooling : All of resource are centralize to service for customer. And the tenant can’t know the information about resource. Resource is network, storage, bandwidth, CPU, RAM…
+Rapid elasticity: Capabilities can be elastically provisioned and replaced. This characteristics increase the use of resource more flexible. 
+Measured service: The cloud need it to manage the service and billing. Beside, cloud automatic control and optimize resource use by leveraging a metering. Resource can be collected , monitored, reported and billing. This ensure the user can pay per use. 
+Service Models:
+Software as a Service(Saas): The capacity provide to the user is to deployed the application running on the cloud infrastructure. The app can  accessible from client through web interface , API or program interface. The client only work with app and config app setting, not manage the cloud infrastructure include network, storage, service, operating system. 
+Platform as a Service (PaaS): The capacity provided to the consumer is to deploy onto the cloud infrastructure consumer-created or acquired applications created using programming onto the cloud languages, libraries, services, and tools supported. The client does not manage or control the underlying cloud infrastructure like Sass but has control over the deployed applications and possibly configuration settings for the application-hosting environment infrastructure consumer-created. Some of  PaaS is: Heroku, Google App Engine, 
+(platform, database,web server, operating system)
+Infrastructure as a Service (IaaS): The capacity provided the instance or vitural machine to the consumer. The user can control the image, firewall, storage, balancing traffic, IP address, VLAN and all contain in resource pooling. Some of IaaS is : Amazon EC2, Google Compute Engine, Rackspace Cloud, Windows Azure, Digital Ocean
+Deployment Models:
+Private cloud
+Public cloud : It build to provide the service for anyone on the internet. Whenever you need a resource, you registry at provider and pay-as-you-go pricing.  
+Hybrid cloud
