@@ -3,3 +3,67 @@ install zabbix agent : apt-get install zabbix-agent
 In a passive check the agent responds to a data request. Zabbix server (or proxy) asks for data, for example, CPU load, and Zabbix agent sends back the result.
 
 Active checks require more complex processing. The agent must first retrieve a list of items from Zabbix server for independent processing. Then it will periodically send new values to the server.
+
+
+Report 
+Openstack platform has the ceilometer service to monitor the status of instance. But this service didn't monitor the physical server. Consequently, I build another server to monitor the healthy of server and alert to me when it has problem. There are many open source software can do it such as: nagios, Zabbix, Zennos ...etc. In this case, i choose Zabbix because it is a enterprise-class open source distributed monitoring solution and  easy to deploy, easy to monitor, the lower hardware than another tool. Beside, Zabbix has the real-time graphing to monitor items by immediately graphed. Zabbix has four compoment: Zabbix Server, Zabbix proxy, Zabbix Agent, Web Interface. Zabbix proxy is a cache for zabbix server and very useful in the big network. But in this case, i will not deploment that. 
+Zabbix Server: It's a central component and responsible for receive data from agent and store all configuration, statistical and operational data
+Zabbix Agent: It's deployed on the remote node and collect the data to send Zabbix server.
+Web Interface: It's provide to access zabbix from anywhere and any platfrom. Beside the web interface is very useful to manage and confiure without using command. 
+
+Hinh
+Deployment
+
+As i mention, zabbix is very easy to deploy. I only install some package like that :
+
+	yum install httpd httpd-devel
+	yum install mysql mysql-server
+	yum install php php-cli php-common php-devel php-pear php-gd php-mbstring php-mysql php-xml 
+
+	rpm -Uvh http://repo.zabbix.com/zabbix/2.2/rhel/6/x86_64/zabbix-release-2.2-1.el6.noarch
+
+	yum install zabbix-server-mysql zabbix-web-mysql zabbix-agent zabbix-java-gateway
+==========================================================================================
+Add userparameter to check the status of service 
+Openstack.status.nova-cert
+OpenstackServices.Status.nova-cert
+Service nova-api Stop
+{Controller-openstack:OpenstackServices.Status.nova-cert.last()}=0
+
+UserParameter=OpenstackServices.Status.nova-api,service nova-api status | grep -c start
+UserParameter=OpenstackServices.Status.nova-cert,service nova-cert status | grep -c start
+UserParameter=OpenstackServices.Status.nova-conductor,service nova-conductor status | grep -c start
+UserParameter=OpenstackServices.Status.nova-consoleauth,service nova-consoleauth status | grep -c start
+UserParameter=OpenstackServices.Status.nova-novncproxy,service nova-novncproxy status | grep -c start
+UserParameter=OpenstackServices.Status.nova-scheduler,service nova-scheduler status | grep -c start
+
+
+
+UserParameter=OpenstackServices.Status.glance-registry,service glance-registry status | grep -c start
+UserParameter=OpenstackServices.Status.glance-api,service glance-api status | grep -c start
+UserParameter=OpenstackServices.Status.keystone,service keystone status | grep -c start
+UserParameter=OpenstackServices.Status.apache2,service apache2 status | grep -c start
+UserParameter=OpenstackServices.Status.memcached,service memcached status | grep -c start
+UserParameter=OpenstackServices.Status.cinder-scheduler,service cinder-scheduler status | grep -c start
+UserParameter=OpenstackServices.Status.cinder-api,service cinder-api status | grep -c start
+UserParameter=OpenstackServices.Status.swift-proxy,service swift-proxy status | grep -c start
+UserParameter=OpenstackServices.Status.neutron-server,service neutron-server status | grep -c start
+
+
+Service nova-api Stop
+{NetworkNode-openstack:OpenstackServices.Status.nova-cert.last()}=0
+===================compute node=================
+UserParameter=OpenstackServices.Status.nova-api-metadata,service nova-api-metadata status | grep -c start
+UserParameter=OpenstackServices.Status.nova-compute,service nova-compute status | grep -c start
+UserParameter=OpenstackServices.Status.neutron-ovs-cleanup,service neutron-ovs-cleanup status | grep -c start
+UserParameter=OpenstackServices.Status.neutron-plugin-openvswitch-agent,service neutron-plugin-openvswitch-agent status | grep -c start
+
+======================neutorn node=========================
+UserParameter=OpenstackServices.Status.openvswitch-switch,service openvswitch-switch status | grep -c start
+UserParameter=OpenstackServices.Status.neutron-plugin-openvswitch-agent,service neutron-plugin-openvswitch-agent status | grep -c start
+UserParameter=OpenstackServices.Status.neutron-l3-agent,service neutron-l3-agent status | grep -c start
+UserParameter=OpenstackServices.Status.neutron-metadata-agent,service neutron-metadata-agent status | grep -c start
+UserParameter=OpenstackServices.Status.neutron-dhcp-agent,service neutron-dhcp-agent status | grep -c start
+===============cinder node========================
+UserParameter=OpenstackServices.Status.cinder-volume,service cinder-volume status | grep -c start
+UserParameter=OpenstackServices.Status.tgt,service tgt status | grep -c start
