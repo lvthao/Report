@@ -366,7 +366,13 @@
 	 nova show instance
 	 nova host-describe compute01
 	 nova --debug live-migration cecb64dc-38f3-4947-9f0a-279c2157f512 compute01
-	
+17. Script create vm with install apache
+#!/bin/bash
+/usr/bin/apt-get -qy update
+/usr/bin/apt-get -qy install apache2
+echo "<h1>Hello world!</h1>" > /var/www/html/index2.html
+
+
 
 20.Task 
 	- Install all service on Controller
