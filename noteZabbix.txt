@@ -4,12 +4,12 @@ In a passive check the agent responds to a data request. Zabbix server (or proxy
 
 Active checks require more complex processing. The agent must first retrieve a list of items from Zabbix server for independent processing. Then it will periodically send new values to the server.
 
-
+80% of the mean time to repair is wasted on trying to locate the issue
 Report 
-Openstack platform has the ceilometer service to monitor the status of instance. But this service didn't monitor the physical server. Consequently, I build another server to monitor the healthy of server and alert to me when it has problem. There are many open source software can do it such as: nagios, Zabbix, Zennos ...etc. In this case, i choose Zabbix because it is a enterprise-class open source distributed monitoring solution and  easy to deploy, easy to monitor, the lower hardware than another tool. Beside, Zabbix has the real-time graphing to monitor items by immediately graphed. Zabbix has four compoment: Zabbix Server, Zabbix proxy, Zabbix Agent, Web Interface. Zabbix proxy is a cache for zabbix server and very useful in the big network. But in this case, i will not deploment that. 
+Openstack platform has the ceilometer service to monitor the status of instance. But this service didn't monitor the physical server. Openstack is Monitor as a service (MOaaS) are still at “blueprint” state. Consequently, I need to monitor the healthy of server and alert me when the problem happen . There are many open source software can do it such as: nagios, Zabbix, Zennos ...etc. But the monitor solution must be montioring the physical hardware, the application run on it and the virtual machine. In this case, i choose Zabbix because it is a enterprise-class open source distributed monitoring solution and  easy to deploy, easy to monitor, the lower hardware than another tool. Beside, Zabbix has the real-time graphing to monitor items by immediately graphed. Zabbix has four compoment: Zabbix Server, Zabbix proxy, Zabbix Agent, Web Interface. Zabbix proxy is a cache for zabbix server and very useful in the big network. But in this case, i will not deploment that. 
 Zabbix Server: It's a central component and responsible for receive data from agent and store all configuration, statistical and operational data
 Zabbix Agent: It's deployed on the remote node and collect the data to send Zabbix server.
-Web Interface: It's provide to access zabbix from anywhere and any platfrom. Beside the web interface is very useful to manage and confiure without using command. 
+Web Interface: It's provide to access zabbix from anywhere and any platfrom. Beside the web interface is very useful to manage and confiure without using any command. 
 
 Hinh
 Deployment
@@ -24,11 +24,10 @@ As i mention, zabbix is very easy to deploy. I only install some package like th
 
 	yum install zabbix-server-mysql zabbix-web-mysql zabbix-agent zabbix-java-gateway
 ==========================================================================================
-Add userparameter to check the status of service 
-Openstack.status.nova-cert
-OpenstackServices.Status.nova-cert
-Service nova-api Stop
-{Controller-openstack:OpenstackServices.Status.nova-cert.last()}=0
+
+1.1 config on the remote node:
+On the remote node, I need to give the address of the zabbix server. It ensure the data from zabbix client to be send to right server. Beside using the default template of zabbix, I write some configure to help monitor the status of all the service. 
+
 
 UserParameter=OpenstackServices.Status.nova-api,service nova-api status | grep -c start
 UserParameter=OpenstackServices.Status.nova-cert,service nova-cert status | grep -c start
@@ -50,8 +49,6 @@ UserParameter=OpenstackServices.Status.swift-proxy,service swift-proxy status | 
 UserParameter=OpenstackServices.Status.neutron-server,service neutron-server status | grep -c start
 
 
-Service nova-api Stop
-{NetworkNode-openstack:OpenstackServices.Status.nova-cert.last()}=0
 ===================compute node=================
 UserParameter=OpenstackServices.Status.nova-api-metadata,service nova-api-metadata status | grep -c start
 UserParameter=OpenstackServices.Status.nova-compute,service nova-compute status | grep -c start
@@ -67,3 +64,103 @@ UserParameter=OpenstackServices.Status.neutron-dhcp-agent,service neutron-dhcp-a
 ===============cinder node========================
 UserParameter=OpenstackServices.Status.cinder-volume,service cinder-volume status | grep -c start
 UserParameter=OpenstackServices.Status.tgt,service tgt status | grep -c start
+
+
+1.2 
+Add userparameter to check the status of service 
+Openstack.status.nova-cert
+OpenstackServices.Status.nova-cert
+Service nova-api Stop
+{Controller-openstack:OpenstackServices.Status.nova-cert.last()}=0
+
+
+
+
+
+
+"80% of the mean time to repair is wasted on trying to locate the issue"- gartner. That a reason, I need to monitor and handle the error of the system. In Openstack, I must monitor and maintain a lot of server and services. In particular, some of services must be high avaibility such as neutron, nova metadata, DHCP agent .....Therefore, we need investment the log agreement, monitor and alert for fast detection and recovery. The Openstack didn't support service to do that. Consequently, I will use the logstash to  deployed central log server and zabbix to monitoring the healthy of system. All of them are open source software. The purpose of central log server is log agreement from all of service in openstack. This solution is very useful to identity problem from server or services. The aim of zabbix is monitoring the status of all nodes such as ram, CPU, memory, disk,..etc. and alert the notification when something to error. 
+
+
+
+1. Log management.
+	Logging is an important activity in all computer systems, and OpenStack is the same. It allows an administrator to track down problematic activity that can be used to help provide a solution.Understanding where the services log and managing those logs to allow administrator to identify problems quickly and easily. Understanding logging in OpenStack is important to ensure the  environment is healthy and the able to submit log entries back to the community to help fix bugs. For log investigation, some tool like cat, tail, grep may be useful to diagnose and identity the problem in the log file. But what happen if we have a lot of servers and we want to log collection, processing and extracting data from the huge of log event. Some command above cannot solve this problem. All of the log event need to be centralize. Therefore, I will deploy the central log server to collect log event, parsing, indexing and storing to help the administrator track down the problem. There are many tool to do it but I need a solution easy to deploy, easy to operate, scale and open source. In this case, I choose some tool to do that. I install four compoment: Logstash, Elasticsearch, Kibana, Rsyslog (default install on ubuntu).
+	Hinh
+
+	Logstash: Receive log event from remote node and index the log. logstash is particularly useful since not all components follow the same format for log messages. logstash’s grok filter helps normalize various log messages into a format that can be indexed and searched. 
+	Elasticsearch: Store the log event and alow to search  
+	Kibana: Provide the web interface to easy monitor and handle the log. 
+	Rsyslog: send log event from service of openstack to logstash. It used to install on all of the remote node 
+1.1	Configure on the remote node 
+	On the remote node, i must to send the log event to central node.
+	First, i will enable openstack to send the rsyslog. Luckily, all of the service of Openstack support rsyslog to send log event but the default is disable. To enable, we must change flag use_syslog=false to use_syslog = True on the configure file of services. There is example for keystone service. 
+		sed -i "s/#verbose=false/verbose = False/" /etc/keystone/keystone.conf 
+		sed -i "s/#debug=false/debug = False/" /etc/keystone/keystone.conf 
+		sed -i "s/#use_syslog=false/use_syslog = True/" /etc/keystone/keystone.conf
+		sed -i "s/#syslog_log_facility=LOG_USER/syslog_log_facility = LOG_LOCAL0/" /etc/keystone/keystone.conf
+	In this case the syslog facility is use to determind which log of service. For priority, i only want to get the WARNNING and ERROR. So, i must to use the two flag verbose = False and debug = False. This table is more detail about the priority on Openstack.
+	Status			Flag		Log
+	verbose=true	debug=true	DEBUG, ERROR, WARNING, INFO
+	verbose=false	debug=true	DEBUG, ERROR, WARNING, INFO
+	verbose=true	debug=false	WARNING, INFO
+	verbose=false	debug=false	WARNING, ERROR
+	Second, I must configure to send rsyslog from remote node to central node. In central node, i open the tcp port 9000 to receive log event from all nodes. 
+		local0.* 	@@logserver:9000  #nova
+		local1.* 	@@logserver:9000  #glance
+		local2.* 	@@logserver:9000  #keystone
+		local3.* 	@@logserver:9000  #cinder
+		local4.* 	@@logserver:9000  #neutron
+		local5.* 	@@logserver:9000  #swiff
+		local6.* 	@@logserver:9000  #ceilometer
+1.2 Configure on the central log node
+On the central node, I install Logstash, elasticsearch and kibana and configure that to catch, index and store log event. 
+First, I configure Rsyslog to open the tcp port 9000 to receive log event from all nodes. 
+		local0.* 	@@logserver:9000  #nova
+		local1.* 	@@logserver:9000  #glance
+		local2.* 	@@logserver:9000  #keystone
+		local3.* 	@@logserver:9000  #cinder
+		local4.* 	@@logserver:9000  #neutron
+		local5.* 	@@logserver:9000  #swiff
+		local6.* 	@@logserver:9000  #ceilometer
+
+Second, I configure logstash to receive log event, parsing and storing. I open the port 9000 to receive log event. 
+input {
+tcp {
+	    port => 9000
+	    type => syslog
+	  }
+	}
+Third, I use the grok filter to parsing the log line. 
+filter {
+        if [type] == "syslog" {
+        grok {
+                patterns_dir=> "/opt/logstash/patterns"
+                match => ["message","%{OPENSTACK_SYSLOG}"]
+                add_tag => ["OpenStack"]
+            }
+        }
+The struct of log on service of openstack look like : 
+<134>2014-09-30T16:09:18.580221+07:00 controller 2014-09-30 16:09:18.579 1261 INFO oslo.messaging._drivers.impl_rabbit [-] Connected to AMQP server on controller:5672. 
+So, I want extra data like that. 
+	Timestamp 		: 2014-09-30T16:09:18.580221+07:00
+	Hostname 		: controller
+	Timestamp		: 2014-09-30 16:09:18.579
+	PID 			: 1261
+	LOGLEVEL 		: WARNING
+	PROGRAM 		: oslo.messaging._drivers.impl_rabbit
+	ID 			: [-]
+	MESSAGE		: Connected to AMQP server on controller:5672
+Here, logstash support grow pattern to help parsing the log event. Therefore, i write a grow pattern to do that. 
+OPENSTACK_LOGLEVEL ([A-a]lert|ALERT|[T|t]race|TRACE| [D|d]ebug|DEBUG|[N|n]otice|NOTICE|[I|i]nfo|INFO|[W|w]arn?(?:ing)?|WARN?(?:ING)?|[E|e]rr?(?:or)?|ERR?(?:OR)?|[C|c]rit?(?:ical)?|CRIT?(?:ICAL)?|[A|a]udit|AUDIT|[F|f]atal|FATAL|[S|s]evere|SEVERE|EMERG(?:ENCY)?|[Ee]merg(?:ency)?)
+OPENSTACK_LOG %{TIMESTAMP_ISO8601:OS_timestamp} %{POSINT:OS_pid} %{OPENSTACK_LOGLEVEL:OS_loglevel} %{PROG:OS_program} (?<OS_id>\[(?:(req-%{UUID}|%{UUID} |%{BASE16NUM}|None|-|%{SPACE}))+\])? %{GREEDYDATA:OS_message}
+OPENSTACK_LOGSTORAGE %{GREEDYDATA:OS_message}
+OPENSTACK_LOGLINE %{OPENSTACK_LOG}| %{OPENSTACK_LOGSTORAGE}
+OPENSTACK_SYSLOG(?<sys_pri>\<%{POSINT}\>)%{TIMESTAMP_ISO8601:timestamp} %{IPORHOST:OS_hostname} %{OPENSTACK_LOGLINE}
+
+Finnaly, outputs the result of the second step to ElaticSearch
+	output {
+	  elasticsearch { host => localhost }
+	  stdout { codec => rubydebug }
+	}
+
+2. Monitor.
+ssh root@172.22.22.180 "mysqldump --user=root --password="openstack12345" --all-databases --lock-tables \ |bzip2" > /root/test/test.sql.bz2
