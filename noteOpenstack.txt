@@ -62,8 +62,10 @@ Eucalyptus focus compatible AWS
 Why I choose the openstack.
 The main reason cited for choosing OpenStack is Open Technology and Avoiding Lock-in.
 
+Just like Operating system for a desktop or server manages the resources associated with it, Cloud OS manages the resources associated with the cloud. Major cloud resources are compute, storage and network. Compute includes servers and hypervisors associated with the servers that allows for VM creation. Storage includes local storage, Storage area network and Object storage. Network includes vlans, firewalls, load balancers etc. Cloud OS is also responsible for giving the cloud characteristics like Elasticity, self service provisioning model etc. Cloud OS is also responsible for other items like image management, authentication, security, billing etc.
 
 ===========================================================
+Introduction cloud computing 
 Cloud computing is a computing model, refers to the on-demand delivery of IT resources and applications via the Internet with pay-as-you-go pricing.The cloud mode has 5 essential characteristics , 3 service models and  4 deployment models
  
 Essential Characteristics:
@@ -81,3 +83,16 @@ Deployment Models:
 Private cloud
 Public cloud : It build to provide the service for anyone on the internet. Whenever you need a resource, you registry at provider and pay-as-you-go pricing.  
 Hybrid cloud
+
+=====================================================================
+
+The Report Stucture: 
+Chapter 1. Introduction: Introduction about the Vietnam Nation Unviversity-VNU where i have carried out my intership
+Chapter 2. Background: the knowledge about cloud computing, the openstack platform and analyse request
+Chapter 3. Deployment: Deploy the topology and configure all the services. Writing the script to automate the install. 
+Chapter 4. Demo: Demo create instance, network, volume, image, snapshot and test upload image into glance, upload file into swiff 
+Chapter 5. Conclusion and Future work:
+
+The VM workflow:
+(1) The user use the horizone to create the instance 
+(2) 
